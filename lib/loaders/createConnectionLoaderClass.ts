@@ -16,10 +16,11 @@ import {
   toCursor,
 } from "../utilities";
 
-export type DataLoaderKey<TResult> = {
+export type DataLoaderKey<TResult, TArgs> = {
   cursor?: string | null;
   limit?: number | null;
   reverse?: boolean;
+  args?: TArgs;
   orderBy?: (
     identifiers: ColumnIdentifiers<TResult>
   ) => [SqlToken, OrderDirection][];
@@ -33,26 +34,26 @@ const SORT_COLUMN_ALIAS = "s1";
 const TABLE_ALIAS = "t1";
 
 export const createConnectionLoaderClass = <
-  TResult extends Record<string, any>
+  TResult extends Record<string, any>, TArgs
 >(config: {
   columnNameTransformer?: (column: string) => string;
-  query: TaggedTemplateLiteralInvocation<TResult>;
+  query: TaggedTemplateLiteralInvocation<TResult> | ((args?: TArgs) => TaggedTemplateLiteralInvocation<TResult>);
 }) => {
-  const { columnNameTransformer = snakeCase, query } = config;
+  const { columnNameTransformer = snakeCase } = config;
   const columnIdentifiers = getColumnIdentifiers<TResult>(
     TABLE_ALIAS,
     columnNameTransformer
   );
 
   return class ConnectionLoaderClass extends DataLoader<
-    DataLoaderKey<TResult>,
+    DataLoaderKey<TResult, TArgs>,
     Connection<TResult>,
     string
   > {
     constructor(
       pool: CommonQueryMethods,
       dataLoaderOptions?: DataLoader.Options<
-        DataLoaderKey<TResult>,
+        DataLoaderKey<TResult, TArgs>,
         Connection<TResult>,
         string
       >
@@ -63,6 +64,7 @@ export const createConnectionLoaderClass = <
           const countQueries: TaggedTemplateLiteralInvocation<any>[] = [];
 
           loaderKeys.forEach((loaderKey, index) => {
+            const query = typeof config.query === 'function' ? config.query(loaderKey.args) : config.query;
             const {
               cursor,
               info,
@@ -190,6 +192,7 @@ export const createConnectionLoaderClass = <
           });
 
           let extendedParser;
+          const query = typeof config.query === 'function' ? config.query() : config.query;
 
           if (query.parser) {
             const parser = query.parser as unknown as AnyZodObject;
@@ -279,6 +282,7 @@ export const createConnectionLoaderClass = <
             info,
             limit,
             orderBy,
+            args,
             reverse = false,
             where,
           }) => {
@@ -290,7 +294,7 @@ export const createConnectionLoaderClass = <
               orderBy?.(columnIdentifiers)
             )}|${JSON.stringify(
               where?.(columnIdentifiers)
-            )}|${requestedFields.values()}`;
+            )}|${requestedFields.values()}|${JSON.stringify(args)}`;
           },
         }
       );

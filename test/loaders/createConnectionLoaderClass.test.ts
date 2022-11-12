@@ -37,11 +37,36 @@ const BarConnectionLoader = createConnectionLoaderClass({
   `,
 });
 
+const dynamicSpy = jest.fn();
+const DynamicQueryLoader = createConnectionLoaderClass({
+  query: (args?: { value_ilike?: string }) => {
+    dynamicSpy(args);
+    return sql.type(
+      z.object({
+        id: z.number(),
+        uid: z.string(),
+      })
+    )`
+      SELECT
+        id, uid
+      FROM test_table_bar
+      WHERE ${args?.value_ilike ? sql.fragment`value ILIKE ${sql.literalValue(args.value_ilike)}` : sql.fragment`TRUE`}
+    `
+  },
+});
+
+
+function getPostgresUrl(): string {
+  return `postgres://${encodeURIComponent(process.env.PGUSER || 'postgres')}:${encodeURIComponent(process.env.PGPASSWORD || '')}@${
+      process.env.PGHOST || '0.0.0.0'
+  }:${process.env.PGPORT || '5432'}/${process.env.PGDATABASE || 'postgres'}`;
+}
+
 describe("createConnectionLoaderClass", () => {
   let pool: DatabasePool;
 
   beforeAll(async () => {
-    pool = await createPool(process.env.POSTGRES_DSN || "", {
+    pool = await createPool(process.env.POSTGRES_DSN || getPostgresUrl(), {
       interceptors: [createQueryLoggingInterceptor()],
     });
 
@@ -355,6 +380,27 @@ describe("createConnectionLoaderClass", () => {
         where: ({ value }) => sql`upper(${value}) = 'EEE'`,
       }),
     ]);
+
+    expect(results[0].count).toEqual(0);
+    expect(results[0].edges.length).toEqual(2);
+    expect(results[1].count).toEqual(0);
+    expect(results[1].edges.length).toEqual(1);
+  });
+
+  it("Allows filtering dynamically", async () => {
+    const loader = new DynamicQueryLoader(pool, {});
+    const results = await Promise.all([
+      loader.load({
+        info: getInfo(["edges"]),
+        args: { value_ilike: 'cc%' },
+      }),
+      loader.load({
+        info: getInfo(["pageInfo"]),
+        args: { value_ilike: 'eee' },
+      }),
+    ]);
+    expect(dynamicSpy).toHaveBeenCalledWith({ value_ilike: 'cc%' });
+    expect(dynamicSpy).toHaveBeenCalledWith({ value_ilike: 'eee' });
 
     expect(results[0].count).toEqual(0);
     expect(results[0].edges.length).toEqual(2);
