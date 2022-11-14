@@ -1,6 +1,6 @@
 {
-  "name": "slonik-dataloaders",
-  "version": "2.1.0",
+  "name": "@ardsh/slonik-dataloaders",
+  "version": "2.1.1",
   "description": "Utilities for creating DataLoaders using Slonik",
   "main": "dist/index.js",
   "files": [

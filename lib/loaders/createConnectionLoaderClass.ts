@@ -16,7 +16,7 @@ import {
   toCursor,
 } from "../utilities";
 
-export type DataLoaderKey<TResult, TArgs> = {
+export type DataLoaderKey<TResult, TArgs=never> = {
   cursor?: string | null;
   limit?: number | null;
   reverse?: boolean;
@@ -34,7 +34,7 @@ const SORT_COLUMN_ALIAS = "s1";
 const TABLE_ALIAS = "t1";
 
 export const createConnectionLoaderClass = <
-  TResult extends Record<string, any>, TArgs
+  TResult extends Record<string, any>, TArgs=never
 >(config: {
   columnNameTransformer?: (column: string) => string;
   query: TaggedTemplateLiteralInvocation<TResult> | ((args?: TArgs) => TaggedTemplateLiteralInvocation<TResult>);

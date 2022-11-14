@@ -7,8 +7,8 @@ import {
   TaggedTemplateLiteralInvocation,
   SqlToken,
   TypeNameIdentifier,
-  PrimitiveValueExpression,
 } from "slonik";
+import type { PrimitiveValueExpression } from "slonik/dist/src/types";
 
 const TABLE_ALIAS = "t1";
 
